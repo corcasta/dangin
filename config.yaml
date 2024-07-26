@@ -1,0 +1,58 @@
+version: 1
+
+stitcher_params:
+  voxel_size: 0.2                                     # Voxel size to downsample into. 
+                                                      # Defaults to 0.2.
+
+  radius_normal: 0.4                                  # Search radius to estimate normals. 
+                                                      # It tends to be related with the voxel size (voxel_size * gain).
+                                                      # Defaults to 0.4.
+
+  radius_fpfh_feature: 1.0                            # Search radius to compute fpfh feature. 
+                                                      # It tends to be related with the voxel size (voxel_size * gain).
+                                                      # Defaults to 1.0.
+
+  max_nn_fpfh_feature: 230                            # Maximum neighbors will be searched to compute fpfh. 
+                                                      # Defaults to 230.
+
+  max_nn_normal: 230                                  # Maximum neighbors will be searched to estimate normals.
+                                                      # It affects downsample point cloud. 
+                                                      # Defaults to 230.
+
+  max_nn_local_reg: 100                               # Maximum neighbors will be searched to estimate normals. 
+                                                      # It affects local registration.
+                                                      # Defaults to 100.
+
+  dist_correspond_checker: 0.3                        # Maximum correspondence points-pair distance. 
+                                                      # It affects global registration.
+                                                      # It tends to be related with the voxel size (voxel_size * gain).
+                                                      # Defaults to 0.3.
+
+  edge_length_correspond_checker: 0.95                # Correspondence checker based on length.
+                                                      # Float value between 0(loose)-1(strict). 
+                                                      # It affects global registration.
+                                                      # Defaults to 0.95.
+
+  ransac_max_iterations: 10000000                     # Max iterations for ransac.
+                                                      # It affects global registration.
+                                                      # Defaults to 10000000.
+
+  ransac_confidence: 0.999                            # Ransac confidence.
+                                                      # It affects global registration
+                                                      # Defaults to 0.999.
+
+  max_correspond_dist_local_reg: 0.2                  # Maximum correspondence points-pair distance. 
+                                                      # It affects local registration
+                                                      # Defaults to 0.2.
+
+  nn_stat_outlier: 20                                 # Number of neighbors around the target point for statistical ourlier removal. 
+                                                      # Defaults to 20.
+
+  std_ratio_outlier: 2.0                              # Standard deviation ratio for statistical outlier removal. 
+                                                      # Defaults to 2.0.
+
+  nn_radius_outlier: 25                               # Number of points within the radius for outlier removal. 
+                                                      # Defaults to 25.
+
+  radius_outlier: 0.5                                 # Radius of the sphere for outlier removal. 
+                                                      # Defaults to 0.5.
