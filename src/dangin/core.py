@@ -4,44 +4,82 @@ import numpy as np
 import open3d as o3d
 
 class Stitcher():
-    def __init__(self, voxel_size=0.2, radius_normal_weight=2.0, radius_fpfh_feature_weight=5.0, max_nn_fpfh_feature=230, 
-                 max_nn_normal=230, max_nn_local_reg=100, dist_correspond_checker_weight=1.5, edge_length_correspond_checker=0.95,
-                 ransac_max_iterations=10000000, ransac_confidence=0.999, max_correspond_dist=0.2):
+    def __init__(self, voxel_size=0.2, radius_normal=0.4, radius_fpfh_feature=1.0,
+                 max_nn_fpfh_feature=230, max_nn_normal=230, max_nn_local_reg=100, 
+                 dist_correspond_checker=0.3, edge_length_correspond_checker=0.95,
+                 ransac_max_iterations=10000000, ransac_confidence=0.999, max_correspond_dist_local_reg=0.2,
+                 nn_stat_outlier=20, std_ratio_outlier=2.0, nn_radius_outlier=25, radius_outlier=0.5):
         """_summary_
 
         Args:
-            voxel_size (float, optional): _description_. Defaults to 0.2.
-            radius_normal_weight (float, optional): _description_. Defaults to 2.0.
-            radius_fpfh_feature_weight (float, optional): _description_. Defaults to 5.0.
-            max_nn_fpfh_feature (int, optional): _description_. Defaults to 230.
-            max_nn_normal (int, optional): _description_. Defaults to 230.
-            max_nn_local_reg (int, optional): _description_. Defaults to 100.
-            dist_correspond_checker_weight (float, optional): _description_. Defaults to 1.5.
-            edge_length_correspond_checker (float, optional): _description_. Defaults to 0.95.
-            ransac_max_iterations (int, optional): _description_. Defaults to 10000000.
-            ransac_confidence (float, optional): _description_. Defaults to 0.999.
-            max_correspond_dist (float, optional): _description_. Defaults to 0.2.
+            voxel_size (float, optional):                       Voxel size to downsample into. 
+                                                                Defaults to 0.2.
+            radius_normal (float, optional):                    Search radius to estimate normals. 
+                                                                It tends to be related with the voxel size (voxel_size * gain).
+                                                                Defaults to 0.4.
+            radius_fpfh_feature (float, optional):              Search radius to compute fpfh feature. 
+                                                                It tends to be related with the voxel size (voxel_size * gain).
+                                                                Defaults to 1.0.
+            max_nn_fpfh_feature (int, optional):                Maximum neighbors will be searched to compute fpfh. 
+                                                                Defaults to 230.
+            max_nn_normal (int, optional):                      Maximum neighbors will be searched to estimate normals.
+                                                                It affects downsample point cloud. 
+                                                                Defaults to 230.
+            max_nn_local_reg (int, optional):                   Maximum neighbors will be searched to estimate normals. 
+                                                                It affects local registration.
+                                                                Defaults to 100.
+            dist_correspond_checker_weight (float, optional):   Maximum correspondence points-pair distance. 
+                                                                It affects global registration.
+                                                                It tends to be related with the voxel size (voxel_size * gain).
+                                                                Defaults to 0.3.
+            edge_length_correspond_checker (float, optional):   Correspondence checker based on length.
+                                                                Float value between 0(loose)-1(strict). 
+                                                                It affects global registration.
+                                                                Defaults to 0.95.
+            ransac_max_iterations (int, optional):              Max iterations for ransac.
+                                                                It affects global registration.
+                                                                Defaults to 10000000.
+            ransac_confidence (float, optional):                Ransac confidence.
+                                                                It affects global registration
+                                                                Defaults to 0.999.
+            max_correspond_dist_local_reg (float, optional):    Maximum correspondence points-pair distance. 
+                                                                It affects local registration
+                                                                Defaults to 0.2.
+            nn_stat_outlier (int, optional):                    Number of neighbors around the target point for statistical ourlier removal. 
+                                                                Defaults to 20.
+            std_ratio_outlier (float, optional):                Standard deviation ratio for statistical outlier removal. 
+                                                                Defaults to 2.0.
+            nn_radius_outlier (int, optional):                  Number of points within the radius for outlier removal. 
+                                                                Defaults to 25.
+            radius_outlier (float, optional):                   Radius of the sphere for outlier removal. 
+                                                                Defaults to 0.5.
         """
         self.voxel_size = voxel_size
         self.max_nn_normal = max_nn_normal
-        self.radius_normal =  voxel_size * radius_normal_weight
-        self.radius_fpfh_feature = voxel_size * radius_fpfh_feature_weight
+        self.radius_normal =  radius_normal
+        self.radius_fpfh_feature = radius_fpfh_feature
         self.max_nn_fpfh_feature = max_nn_fpfh_feature
-        self.dist_correspond_checker = voxel_size * dist_correspond_checker_weight      # G
+        self.dist_correspond_checker = dist_correspond_checker      # G
         self.edge_length_correspond_checker = edge_length_correspond_checker            # G
         self.ransac_max_iterations = ransac_max_iterations                              # G
         self.ransac_confidence = ransac_confidence                                      # G
-        self.max_correspond_dist = max_correspond_dist
-        self.radius_local_reg = voxel_size * radius_normal_weight
+        self.max_correspond_dist_local_reg = max_correspond_dist_local_reg
+        self.radius_local_reg = radius_normal
         self.max_nn_local_reg = max_nn_local_reg
         self.current_transform = np.eye(4)                                              # Identity Matrix
         self.transforms_history = [self.current_transform]                              # This will store all transforms/poses of each pcd
                                                                                         # is really helpfull to evaluate metrics and comparisons.
     
+        self.nn_stat_outlier = nn_stat_outlier
+        self.std_ratio_outlier = std_ratio_outlier
+        self.nn_radius_outlier = nn_radius_outlier
+        self.radius_outlier = radius_outlier
+         
+         
     @classmethod
     def generate_pointcloud(cls, img: np.array, dmap: np.array, pcd: o3d.cpu.pybind.geometry.PointCloud) -> None:
         """
-        Populates point cloud given the information provided by the image and depth map.
+        Populates point cloud given the information provided by an image and depth map.
 
         Args:
             img (np.array): PNG image
@@ -68,13 +106,14 @@ class Stitcher():
         """
         Transform a copy of source point cloud to target point cloud reference frame and merges it in target point cloud.
         *Changes are reflected in target object itself as this behaviour is same as being passed by 
-         reference in c++ thus no need to return anything.
+        reference in c++ thus no need to return anything.
 
         Args:
             source (o3d.cpu.pybind.geometry.PointCloud): Point cloud to be transformed.
             target (o3d.cpu.pybind.geometry.PointCloud): Point cloud that will be merged with the transformed source point cloud.
             transform (np.array):                        Homogeneous transformation matrix of shape 4x4. 
-                                                         This matrix MUST represent the transform form source to target
+                                                         This matrix MUST represent the transform form s
+                                                         ource to target.
         """
         source_copy = copy.deeepcopy(source)
         source_copy.transform(transform)
@@ -102,13 +141,13 @@ class Stitcher():
         Calculates the results necessary for transforming source point cloud to target point cloud as best as possible. 
 
         Args:
-            source (o3d.cpu.pybind.geometry.PointCloud): Point cloud that is looking to be transformed
-            target (o3d.cpu.pybind.geometry.PointCloud): Point Cloud that works as the reference base
+            source (o3d.cpu.pybind.geometry.PointCloud): Point cloud that is looking to be transformed.
+            target (o3d.cpu.pybind.geometry.PointCloud): Point Cloud that works as the reference base.
 
         Returns:
             o3d.cpu.pybind.pipelines.registration.RegistrationResult: Object that contains registration results 
                                                                       such as transformation, correspondence_set, 
-                                                                      fitness, inlier_rmse
+                                                                      fitness, inlier_rmse.
         """
         source_down, source_fpfh = self._preprocess_point_cloud(source)
         target_down, target_fpfh = self._preprocess_point_cloud(target)
@@ -118,16 +157,17 @@ class Stitcher():
     
     
     def outlier_removal(self, pcd: o3d.cpu.pybind.geometry.PointCloud) -> o3d.cpu.pybind.geometry.PointCloud:
-        """_summary_
+        """
+        Removes outliers in point cloud.
 
         Args:
-            pcd (o3d.cpu.pybind.geometry.PointCloud): _description_
+            pcd (o3d.cpu.pybind.geometry.PointCloud): Point cloud to be cleaned.
 
         Returns:
-            o3d.cpu.pybind.geometry.PointCloud: _description_
+            o3d.cpu.pybind.geometry.PointCloud: Point cloud without outliers.
         """
-        pcd, ind = pcd.remove_statistical_outlier(nb_neighbors=20, std_ratio=2.0)
-        pcd, ind = pcd.remove_radius_outlier(nb_points=25, radius=0.5)
+        pcd, ind = pcd.remove_statistical_outlier(nb_neighbors=self.nn_stat_outlier, std_ratio=self.std_ratio_outlier)
+        pcd, ind = pcd.remove_radius_outlier(nb_points=self.nn_radius_outlier, radius=self.radius_outlier)
         return pcd
     
     
@@ -179,7 +219,8 @@ class Stitcher():
         Returns:
             o3d.cpu.pybind.pipelines.registration.RegistrationResult: Object that contains registration 
                                                                       results such as transformation, 
-                                                                      correspondence_set, fitness, inlier_rmse
+                                                                      correspondence_set, fitness, 
+                                                                      inlier_rmse.
         """
         result = o3d.pipelines.registration.registration_ransac_based_on_feature_matching(
             source_down, target_down, source_fpfh, target_fpfh, True, self.dist_correspond_checker,
@@ -203,16 +244,16 @@ class Stitcher():
             target (o3d.cpu.pybind.geometry.PointCloud): Point cloud that works as the reference base.
             transform (np.array):                        Homogeneous transformation matrix shape 4x4. 
                                                          This matrix represents the global alignment 
-                                                         between the point clouds (source -> target)
+                                                         between the point clouds (source -> target).
 
         Returns:
             o3d.cpu.pybind.pipelines.registration.RegistrationResult: Object that contains registration results 
                                                                       such as transformation, correspondence_set, 
-                                                                      fitness, inlier_rmse
+                                                                      fitness, inlier_rmse.
         """
         source.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=self.radius_local_reg, max_nn=self.max_nn_local_reg))
         target.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=self.radius_local_reg, max_nn=self.max_nn_local_reg))
-        result = o3d.pipelines.registration.registration_icp(source, target, self.max_correspond_dist, transform, o3d.pipelines.registration.TransformationEstimationPointToPlane())
+        result = o3d.pipelines.registration.registration_icp(source, target, self.max_correspond_dist_local_reg, transform, o3d.pipelines.registration.TransformationEstimationPointToPlane())
         #result = o3d.pipelines.registration.registration_colored_icp(source, target, voxel_size, result.transformation)
         return result
 
