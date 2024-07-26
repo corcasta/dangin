@@ -41,13 +41,14 @@ def dataloader_dmap(dataset_path: str, ground_truth: bool = False) -> Generator[
             break
         
 def dataloader_ply(dataset_path: str) -> Generator[tuple[np.array, np.array], None, None]:
-    """_summary_
+    """
+    Loads a ply file for processing
 
     Args:
-        dataset_path (str): _description_
+        dataset_path (str): Path to dataset
 
     Yields:
-        _type_: _description_
+        _type_: ply file 
     """
     counter = 0
     while True:
