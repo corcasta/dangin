@@ -1,0 +1,5 @@
+datasets/LA100 filter=lfs diff=lfs merge=lfs -text
+datasets/LA200 filter=lfs diff=lfs merge=lfs -text
+datasets/LA200_inf filter=lfs diff=lfs merge=lfs -text
+datasets/LA200_inf_v2 filter=lfs diff=lfs merge=lfs -text
+datasets/LAWAND filter=lfs diff=lfs merge=lfs -text
