@@ -28,7 +28,7 @@ class Stitcher():
             max_nn_local_reg (int, optional):                   Maximum neighbors will be searched to estimate normals. 
                                                                 It affects local registration.
                                                                 Defaults to 100.
-            dist_correspond_checker_weight (float, optional):   Maximum correspondence points-pair distance. 
+            dist_correspond_checker (float, optional):          Maximum correspondence points-pair distance. 
                                                                 It affects global registration.
                                                                 It tends to be related with the voxel size (voxel_size * gain).
                                                                 Defaults to 0.3.
@@ -59,14 +59,14 @@ class Stitcher():
         self.radius_normal =  radius_normal
         self.radius_fpfh_feature = radius_fpfh_feature
         self.max_nn_fpfh_feature = max_nn_fpfh_feature
-        self.dist_correspond_checker = dist_correspond_checker      # G
-        self.edge_length_correspond_checker = edge_length_correspond_checker            # G
-        self.ransac_max_iterations = ransac_max_iterations                              # G
-        self.ransac_confidence = ransac_confidence                                      # G
+        self.dist_correspond_checker = dist_correspond_checker      
+        self.edge_length_correspond_checker = edge_length_correspond_checker            
+        self.ransac_max_iterations = ransac_max_iterations                              
+        self.ransac_confidence = ransac_confidence                                      
         self.max_correspond_dist_local_reg = max_correspond_dist_local_reg
         self.radius_local_reg = radius_normal
         self.max_nn_local_reg = max_nn_local_reg
-        self.current_transform = np.eye(4)                                              # Identity Matrix
+        self.current_transform = np.eye(4)                                              # Identity Matrix, represents transform w.r.t. world frame
         self.transforms_history = [self.current_transform]                              # This will store all transforms/poses of each pcd
                                                                                         # is really helpfull to evaluate metrics and comparisons.
     
@@ -166,7 +166,7 @@ class Stitcher():
         Returns:
             o3d.cpu.pybind.geometry.PointCloud: Point cloud without outliers.
         """
-        pcd, ind = pcd.remove_statistical_outlier(nb_neighbors=self.nn_stat_outlier, std_ratio=self.std_ratio_outlier)
+        #pcd, ind = pcd.remove_statistical_outlier(nb_neighbors=self.nn_stat_outlier, std_ratio=self.std_ratio_outlier)
         pcd, ind = pcd.remove_radius_outlier(nb_points=self.nn_radius_outlier, radius=self.radius_outlier)
         return pcd
     

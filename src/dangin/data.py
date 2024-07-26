@@ -34,7 +34,7 @@ def dataloader_dmap(dataset_path: str, ground_truth: bool = False) -> Generator[
                 dmap_path = render_path + '/nndepth.npy'
             wrench_path = render_path + '/image8.png'
             dmap = np.load(dmap_path)                           # Depth maps are in millimeters
-            wrench_img = cv2.imread(wrench_path)
+            wrench_img = cv2.imread(wrench_path)/255.0
             counter +=1
             yield dmap, wrench_img
         except:
