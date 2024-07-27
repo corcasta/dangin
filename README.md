@@ -35,4 +35,6 @@ Dangine file structure is as follows:
     - Is where dangine lives, inside resides the python module with all the components that find themselves on early stages.
     - **SUGGESTION:** I recommend you to explore the module to get familiarized of thecurrent implementation.
 
+- **config.yaml**
+    - Its a super simple but fast way to configure default behaviours. It is open for improvements.
 
