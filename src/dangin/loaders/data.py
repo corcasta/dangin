@@ -40,7 +40,7 @@ def dataloader_dmap(dataset_path: str, ground_truth: bool = False) -> Generator[
         except:
             break
         
-def dataloader_ply(dataset_path: str) -> Generator[tuple[np.array, np.array], None, None]:
+def dataloader_ply(dataset_path: str, ground_truth: bool = False) -> Generator[tuple[np.array, np.array], None, None]:
     """
     Loads a ply file for processing
 
@@ -54,9 +54,32 @@ def dataloader_ply(dataset_path: str) -> Generator[tuple[np.array, np.array], No
     while True:
         try:
             render_path = dataset_path + f'/render{counter}'
-            ply_path = render_path + f'/{counter}.ply'
+            if ground_truth:
+                ply_path = render_path + f'/truth_{counter}.ply'
+            else:
+                ply_path = render_path + f'/{counter}.ply'
             ply = o3d.io.read_point_cloud(ply_path)
             counter +=1
             yield ply
+        except:
+            break
+        
+        
+def dataloader_img_ply(dataset_path: str, ground_truth: bool = False) -> Generator[tuple[np.array, np.array], None, None]:
+    counter = 0
+    while True:
+        try:
+            img_path = dataset_path + '/images' + f'/{counter}.png'
+            
+            if ground_truth:
+                ply_path = dataset_path + '/ply/ground_truth' + f'/truth_{counter}.ply'
+            else:
+                ply_path = dataset_path + '/ply/inference' + f'/{counter}.ply'
+        
+            img = cv2.imread(img_path)
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            ply = o3d.io.read_point_cloud(ply_path)
+            counter +=1
+            yield img, ply
         except:
             break
