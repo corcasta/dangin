@@ -77,14 +77,14 @@ class Stitcher():
          
          
     @classmethod
-    def generate_pointcloud(cls, img: np.array, dmap: np.array, pcd: o3d.cpu.pybind.geometry.PointCloud) -> None:
+    def generate_pointcloud(cls, img: np.array, dmap: np.array, pcd: o3d.geometry.PointCloud) -> None:
         """
         Populates point cloud given the information provided by an image and depth map.
 
         Args:
             img (np.array): PNG image
             dmap (np.array): Depth map/image
-            pcd (o3d.cpu.pybind.geometry.PointCloud): Point cloud object
+            pcd (o3d.geometry.PointCloud): Point cloud object
         """
         height, width = dmap.shape
         xyz = np.ones(shape=(height, width, 3))  
@@ -102,15 +102,15 @@ class Stitcher():
     
     
     @classmethod
-    def merge_point_clouds(cls, source: o3d.cpu.pybind.geometry.PointCloud, target: o3d.cpu.pybind.geometry.PointCloud, transform: np.array) -> None:
+    def merge_point_clouds(cls, source: o3d.geometry.PointCloud, target: o3d.geometry.PointCloud, transform: np.array) -> None:
         """
         Transform a copy of source point cloud to target point cloud reference frame and merges it in target point cloud.
         *Changes are reflected in target object itself as this behaviour is same as being passed by 
         reference in c++ thus no need to return anything.
 
         Args:
-            source (o3d.cpu.pybind.geometry.PointCloud): Point cloud to be transformed.
-            target (o3d.cpu.pybind.geometry.PointCloud): Point cloud that will be merged with the transformed source point cloud.
+            source (o3d.geometry.PointCloud): Point cloud to be transformed.
+            target (o3d.geometry.PointCloud): Point cloud that will be merged with the transformed source point cloud.
             transform (np.array):                        Homogeneous transformation matrix of shape 4x4. 
                                                          This matrix MUST represent the transform form s
                                                          ource to target.
@@ -120,15 +120,15 @@ class Stitcher():
         target += source
         
         
-    def point_cloud_init_pose(self, pcd: o3d.cpu.pybind.geometry.PointCloud, transform: np.array) -> None:
+    def point_cloud_init_pose(self, pcd: o3d.geometry.PointCloud, transform: np.array) -> None:
         """
         Transforms point cloud (source & target) to the pose given by the transform matrix.
         *Changes are reflected in pcd object itself as this behaviour is same as being passed by 
          reference in c++ thus no need to return anything.
 
         Args:
-            pcd (o3d.cpu.pybind.geometry.PointCloud): Point cloud to be transformed
-            target (o3d.cpu.pybind.geometry.PointCloud): Point cloud to be transformed
+            pcd (o3d.geometry.PointCloud): Point cloud to be transformed
+            target (o3d.geometry.PointCloud): Point cloud to be transformed
             transform (np.array):                        Homogeneous transformation matrix shape 4x4. 
                                                          This matrix represent the starting pose/location 
                                                          for both point clouds.
@@ -136,16 +136,16 @@ class Stitcher():
         pcd.transform(transform)
         
         
-    def global_and_icp_registration_v2(self, source: o3d.cpu.pybind.geometry.PointCloud, target: o3d.cpu.pybind.geometry.PointCloud) -> o3d.cpu.pybind.pipelines.registration.RegistrationResult:
+    def global_and_icp_registration_v2(self, source: o3d.geometry.PointCloud, target: o3d.geometry.PointCloud) -> o3d.pipelines.registration.RegistrationResult:
         """
         Calculates the results necessary for transforming source point cloud to target point cloud as best as possible. 
 
         Args:
-            source (o3d.cpu.pybind.geometry.PointCloud): Point cloud that is looking to be transformed.
-            target (o3d.cpu.pybind.geometry.PointCloud): Point Cloud that works as the reference base.
+            source (o3d.geometry.PointCloud): Point cloud that is looking to be transformed.
+            target (o3d.geometry.PointCloud): Point Cloud that works as the reference base.
 
         Returns:
-            o3d.cpu.pybind.pipelines.registration.RegistrationResult: Object that contains registration results 
+            o3d.pipelines.registration.RegistrationResult: Object that contains registration results 
                                                                       such as transformation, correspondence_set, 
                                                                       fitness, inlier_rmse.
         """
@@ -156,15 +156,15 @@ class Stitcher():
         return result_icp
     
     
-    def outlier_removal(self, pcd: o3d.cpu.pybind.geometry.PointCloud) -> o3d.cpu.pybind.geometry.PointCloud:
+    def outlier_removal(self, pcd: o3d.geometry.PointCloud) -> o3d.geometry.PointCloud:
         """
         Removes outliers in point cloud.
 
         Args:
-            pcd (o3d.cpu.pybind.geometry.PointCloud): Point cloud to be cleaned.
+            pcd (o3d.geometry.PointCloud): Point cloud to be cleaned.
 
         Returns:
-            o3d.cpu.pybind.geometry.PointCloud: Point cloud without outliers.
+            o3d.geometry.PointCloud: Point cloud without outliers.
         """
         #pcd, ind = pcd.remove_statistical_outlier(nb_neighbors=self.nn_stat_outlier, std_ratio=self.std_ratio_outlier)
         pcd, ind = pcd.remove_radius_outlier(nb_points=self.nn_radius_outlier, radius=self.radius_outlier)
@@ -182,16 +182,16 @@ class Stitcher():
         self.current_transform = transform
     
 
-    def _preprocess_point_cloud(self, pcd: o3d.cpu.pybind.geometry.PointCloud) -> tuple[o3d.cpu.pybind.geometry.PointCloud, o3d.cpu.pybind.pipelines.registration.Feature]:
+    def _preprocess_point_cloud(self, pcd: o3d.geometry.PointCloud) -> tuple[o3d.geometry.PointCloud, o3d.pipelines.registration.Feature]:
         """
         Creates a simplified point cloud (downsampled) of the input point cloud.
 
         Args:
-            pcd (o3d.cpu.pybind.geometry.PointCloud): Point cloud
+            pcd (o3d.geometry.PointCloud): Point cloud
 
         Returns:
-            tuple[o3d.cpu.pybind.geometry.PointCloud, 
-            o3d.cpu.pybind.pipelines.registration.Feature]: Tuple comtaining simplified point cloud 
+            tuple[o3d.geometry.PointCloud, 
+            o3d.pipelines.registration.Feature]: Tuple comtaining simplified point cloud 
                                                             and its corresponding features descriptor.
         """
         pcd_down = pcd.voxel_down_sample(self.voxel_size)
@@ -201,23 +201,23 @@ class Stitcher():
         return pcd_down, pcd_fpfh
 
     
-    def _global_registration(self, source_down: o3d.cpu.pybind.geometry.PointCloud, 
-                             target_down: o3d.cpu.pybind.geometry.PointCloud, 
-                             source_fpfh: o3d.cpu.pybind.pipelines.registration.Feature, 
-                             target_fpfh:o3d.cpu.pybind.pipelines.registration.Feature) -> o3d.cpu.pybind.pipelines.registration.RegistrationResult:
+    def _global_registration(self, source_down: o3d.geometry.PointCloud, 
+                             target_down: o3d.geometry.PointCloud, 
+                             source_fpfh: o3d.pipelines.registration.Feature, 
+                             target_fpfh:o3d.pipelines.registration.Feature) -> o3d.pipelines.registration.RegistrationResult:
         """
         Calculates the results necessary for transforming source point cloud to target point cloud as a best 
         initial allignment. Point clouds can be placed anywehere, global registration will produce the a rough 
         best alignment. This requires fine tunning/local registration to get better allignment. 
 
         Args:
-            source_down (o3d.cpu.pybind.geometry.PointCloud): Point cloud that is looking to be transformed.
-            target_down (o3d.cpu.pybind.geometry.PointCloud): Point cloud that works as the reference base.
-            source_fpfh (o3d.cpu.pybind.pipelines.registration.Feature): Point cloud corresponding features descriptor.
-            target_fpfh (o3d.cpu.pybind.pipelines.registration.Feature): Point cloud corresponding features descriptor.
+            source_down (o3d.geometry.PointCloud): Point cloud that is looking to be transformed.
+            target_down (o3d.geometry.PointCloud): Point cloud that works as the reference base.
+            source_fpfh (o3d.pipelines.registration.Feature): Point cloud corresponding features descriptor.
+            target_fpfh (o3d.pipelines.registration.Feature): Point cloud corresponding features descriptor.
 
         Returns:
-            o3d.cpu.pybind.pipelines.registration.RegistrationResult: Object that contains registration 
+            o3d.pipelines.registration.RegistrationResult: Object that contains registration 
                                                                       results such as transformation, 
                                                                       correspondence_set, fitness, 
                                                                       inlier_rmse.
@@ -233,21 +233,21 @@ class Stitcher():
         return result
 
 
-    def _local_registration(self, source: o3d.cpu.pybind.geometry.PointCloud, target: o3d.cpu.pybind.geometry.PointCloud, transform: np.array) -> o3d.cpu.pybind.pipelines.registration.RegistrationResult:
+    def _local_registration(self, source: o3d.geometry.PointCloud, target: o3d.geometry.PointCloud, transform: np.array) -> o3d.pipelines.registration.RegistrationResult:
         """
         Calculates the results necessary for transforming source point cloud to target point cloud as best as possible.
         Point clouds need to be placed together on the area they are meant to be matched. As this method creates only 
         fine tunning allignment. 
 
         Args:
-            source (o3d.cpu.pybind.geometry.PointCloud): Point cloud that is looking to be transformed.
-            target (o3d.cpu.pybind.geometry.PointCloud): Point cloud that works as the reference base.
+            source (o3d.geometry.PointCloud): Point cloud that is looking to be transformed.
+            target (o3d.geometry.PointCloud): Point cloud that works as the reference base.
             transform (np.array):                        Homogeneous transformation matrix shape 4x4. 
                                                          This matrix represents the global alignment 
                                                          between the point clouds (source -> target).
 
         Returns:
-            o3d.cpu.pybind.pipelines.registration.RegistrationResult: Object that contains registration results 
+            o3d.pipelines.registration.RegistrationResult: Object that contains registration results 
                                                                       such as transformation, correspondence_set, 
                                                                       fitness, inlier_rmse.
         """
