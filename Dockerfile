@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install sudo -y \
     && apt install libx11-dev ffmpeg libsm6 libxext6 -y \
     && pip install -r requirements.txt  \
     && pip uninstall opencv==4.7.0 -y \
-    && pip install -e .
-    
+    && pip install -e . \
+    && pip install python-multipart
 CMD ["uvicorn", "dangin.api.routes:app", "--host", "0.0.0.0", "--port", "8000"]
+#CMD ["bash"]    
