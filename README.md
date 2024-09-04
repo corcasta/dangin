@@ -2,6 +2,11 @@
 
 Dangin is Danbots future inference and stitching engine.
 Right now is on early stages of its development cycle, but the future looks bright :)
+## Docker
+To run dangin inside docker just need to run
+```docker
+docker compose up
+```
 
 ## Workflow
 Im planning on implementing **Gitflow's workflow** to handle the development of features, bugs, etc. Please read more about it on the internet. KEEP always in mind that main branch is HOLY, a development branch and features branch should be the way and only correct way to work :)
