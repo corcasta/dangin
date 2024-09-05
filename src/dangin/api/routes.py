@@ -19,10 +19,12 @@ PCD_SIZE = 160*160                  # Each point cloud is composed of 128*128 po
 # to grab starting from the end such that we ensure to be taking 
 # the N FULL point clouds define by rolling window.
 ROLLING_WINDOW_POINTS = ROLLING_WINDOW * PCD_SIZE
-vis_heigth, vis_width = 1000, 1000  # Window size for displaying pcd
+DUMMY_IMG_PATH = ROOTH_PATH + "/datasets/teeth500/images/0.png"
+with open(DUMMY_IMG_PATH, 'rb') as f:
+    DUMMY_IMG = f.read()
+
 
 app = FastAPI()
-
 @app.post("/point_clouds/")
 async def upload_and_process_point_cloud(
         ply: list[UploadFile] = File(...),  # List of uploaded point cloud files
@@ -95,15 +97,21 @@ async def upload_and_process_point_cloud(
         with tempfile.NamedTemporaryFile(suffix=".ply", delete=True) as temp_file:
             o3d.io.write_point_cloud(temp_file.name, pcd_history)
             temp_file.flush()
+            
+            files = {
+                'point_cloud_file':open(temp_file.name, 'rb').read(),
+                'fringe_image': DUMMY_IMG,
+                'wrap_image': DUMMY_IMG
+            }
+            
             data = {
                 "model": "396",
-                "point_cloud_file": open(temp_file.name, 'rb').read(),
-                "fringe_image":"",
-                "wrap_image":  "a",
                 "name": "Hello World",
-                "position": 100
+                "position": f'{idx}'
             }
-            response = requests.post(URL, data=data)
+            response = requests.post(URL, files=files, data=data)
+            print(response.status_code)
+            #print(response)
         
             
     # ****************************** THIS SEND THE STITCHED PCDS ******************************           
